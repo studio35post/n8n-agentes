@@ -1,0 +1,434 @@
+{
+ "name": "Libro n8n — Cap 12: orquestador multi-agente",
+ "nodes": [
+  {
+   "parameters": {
+    "path": "multiagente",
+    "httpMethod": "POST",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "fdb02e64-5f83-4984-9b3c-dea1737eb038",
+   "name": "Webhook de solicitud",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a1",
+       "name": "intentos",
+       "value": 0,
+       "type": "number"
+      },
+      {
+       "id": "a2",
+       "name": "texto",
+       "value": "={{ $json.body.texto }}",
+       "type": "string"
+      },
+      {
+       "id": "a3",
+       "name": "tipo",
+       "value": "={{ $json.body.tipo }}",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "0182b1db-4e97-49f6-b5c8-df561fd3da46",
+   "name": "Inicializar reintentos",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    200,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose"
+        },
+        "conditions": [
+         {
+          "leftValue": "={{ $json.tipo }}",
+          "rightValue": "factura",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "factura"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose"
+        },
+        "conditions": [
+         {
+          "leftValue": "={{ $json.tipo }}",
+          "rightValue": "consulta",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "consulta"
+      }
+     ]
+    },
+    "options": {
+     "fallbackOutput": "extra"
+    }
+   },
+   "id": "dbbcb64d-f0f3-4187-bfc9-55074a7e12cd",
+   "name": "Discriminador de rama",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    420,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.texto }}",
+    "options": {
+     "systemMessage": "Extrae de la factura: proveedor, fecha, total. Responde SOLO JSON con esas tres claves. Si un dato no aparece, usa null."
+    }
+   },
+   "id": "88ca77fd-f2c2-4a7f-98de-b6ca2e4ff3b0",
+   "name": "Trabajador: extractor de facturas",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    660,
+    180
+   ]
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.texto }}",
+    "options": {
+     "systemMessage": "Redacta una respuesta breve y profesional a la consulta del cliente. Maximo 120 palabras, sin prometer plazos ni precios."
+    }
+   },
+   "id": "9016c6c1-eab7-4ee2-8b7c-accbd7811025",
+   "name": "Trabajador: redactor de respuestas",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    660,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "3890a439-8b13-45e6-87d1-3970e07c82d0",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    560,
+    640
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "ca8e5309-3c3d-4d2b-ac05-314d7b49cc3a",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    760,
+    640
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// El orquestador es el flujo: valida barato antes de continuar.\nconst item = $input.first().json;\nconst salida = item.output ?? item.text ?? '';\nconst previo = $('Inicializar reintentos').first().json;\nlet valido = salida.length > 10;\nif (previo.tipo === 'factura') {\n  try { const j = JSON.parse(salida); valido = 'total' in j; }\n  catch { valido = false; }\n}\nreturn [{ json: { ...previo, salida, valido,\n  intentos: (previo.intentos ?? 0) + 1 } }];"
+   },
+   "id": "22c69a50-76b0-4054-90df-edef30e3635d",
+   "name": "Validacion entre etapas",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    900,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.valido }}",
+       "rightValue": true,
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "480f9488-744a-4a53-8909-e71ca727fd51",
+   "name": "¿Valido o agotado?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    1140,
+    300
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "da7587f3-3e4d-4af4-a225-aef03c48877a",
+   "name": "Resultado aceptado",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    1380,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.intentos }}",
+       "rightValue": 2,
+       "operator": {
+        "type": "number",
+        "operation": "lt"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "af99b501-a4ba-459b-9de6-631ffbb8037f",
+   "name": "¿Quedan reintentos?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    1380,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "errorMessage": "Limite de reintentos alcanzado: revision humana necesaria"
+   },
+   "id": "66ad8102-23a9-44c2-b428-3d6d2e1828f8",
+   "name": "Escalar a persona",
+   "type": "n8n-nodes-base.stopAndError",
+   "typeVersion": 1,
+   "position": [
+    1620,
+    500
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Orquestador = el flujo (cap. 12)\nDiscriminador de rama → trabajador especializado → validacion barata → reintento acotado (max 2) → escalado a persona. Cada trabajador tiene proposito unico y su propio prompt.",
+    "width": 460,
+    "height": 200
+   },
+   "id": "bd92e3e8-f114-48da-81d6-af10554e9d3e",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "Trabajador: extractor de facturas",
+      "type": "ai_languageModel",
+      "index": 0
+     },
+     {
+      "node": "Trabajador: redactor de respuestas",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook de solicitud": {
+   "main": [
+    [
+     {
+      "node": "Inicializar reintentos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Inicializar reintentos": {
+   "main": [
+    [
+     {
+      "node": "Discriminador de rama",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Discriminador de rama": {
+   "main": [
+    [
+     {
+      "node": "Trabajador: extractor de facturas",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Trabajador: redactor de respuestas",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Trabajador: redactor de respuestas",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Trabajador: extractor de facturas": {
+   "main": [
+    [
+     {
+      "node": "Validacion entre etapas",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Trabajador: redactor de respuestas": {
+   "main": [
+    [
+     {
+      "node": "Validacion entre etapas",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Validacion entre etapas": {
+   "main": [
+    [
+     {
+      "node": "¿Valido o agotado?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Valido o agotado?": {
+   "main": [
+    [
+     {
+      "node": "Resultado aceptado",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "¿Quedan reintentos?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Quedan reintentos?": {
+   "main": [
+    [
+     {
+      "node": "Discriminador de rama",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Escalar a persona",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

@@ -1,0 +1,423 @@
+{
+ "name": "Libro n8n — Cap 15: atencion a clientes multicanal",
+ "nodes": [
+  {
+   "parameters": {
+    "path": "atencion-whatsapp",
+    "httpMethod": "POST",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "2809625d-e532-41e5-8709-7bb407f6d97f",
+   "name": "Webhook WhatsApp",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "format": "simple",
+    "options": {}
+   },
+   "id": "a44ebb96-5ed3-47b2-8054-85a3de85bcc0",
+   "name": "Correo nuevo (IMAP)",
+   "type": "n8n-nodes-base.emailReadImap",
+   "typeVersion": 2,
+   "position": [
+    0,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const v = $input.first().json.body.entry?.[0]?.changes?.[0]?.value;\nconst msg = v?.messages?.[0];\nif (!msg) return [];\nreturn [{ json: { canal: 'whatsapp', id_plataforma: msg.from,\n  texto: msg.text?.body ?? '', timestamp: msg.timestamp,\n  adjuntos: [] } }];"
+   },
+   "id": "18dea351-d6d8-4399-85e3-64ca0912dfe6",
+   "name": "Normalizar WhatsApp",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const m = $input.first().json;\nreturn [{ json: { canal: 'correo',\n  id_plataforma: (m.from.match(/<(.+)>/) || [null, m.from])[1],\n  texto: `${m.subject}\\n${m.textPlain ?? ''}`,\n  timestamp: Date.now(), adjuntos: [] } }];"
+   },
+   "id": "6baaa3f6-b5c3-4ae5-90ae-ab4e2e28e9d6",
+   "name": "Normalizar correo",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    220,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT cliente_id FROM identidades WHERE canal = $1 AND id_plataforma = $2",
+    "options": {
+     "queryReplacement": "={{ [$json.canal, $json.id_plataforma] }}"
+    }
+   },
+   "id": "c06b9360-3f31-4235-8f4d-a53b8d7f7ebf",
+   "name": "Resolver cliente_id",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    440,
+    300
+   ],
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "jsCode": "// {cliente_id, canal, texto, timestamp, caso_id, adjuntos}\nconst entrada = $('Resolver cliente_id').first().json;\nconst previo = $input.first().json;\nconst origen = $('Normalizar WhatsApp').first()?.json ?? $('Normalizar correo').first().json;\nreturn [{ json: { cliente_id: entrada.cliente_id ?? `nuevo-${origen.canal}-${origen.id_plataforma}`,\n  canal: origen.canal, texto: origen.texto,\n  timestamp: origen.timestamp, caso_id: null,\n  adjuntos: origen.adjuntos } }];"
+   },
+   "id": "556aea3d-164f-4be6-8ec4-0d35e0c3c994",
+   "name": "Esquema comun",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    660,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": false,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.texto }}",
+       "rightValue": "(queja formal|hablar con una persona|reclamacion|urgente)",
+       "operator": {
+        "type": "string",
+        "operation": "regex"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "fba66985-f087-41e0-967b-ce1deb43aee4",
+   "name": "¿Escalada inmediata?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    880,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.texto }}",
+    "options": {
+     "systemMessage": "Atencion a clientes sobre el catalogo de producto. Responde SOLO con informacion devuelta por buscar_catalogo. Si la recuperacion no trae resultados relevantes, dilo y ofrece derivar a una persona. No des datos personales de otros clientes."
+    }
+   },
+   "id": "bac60968-cb28-495c-8937-e3fcfab0289d",
+   "name": "AI Agent con catalogo",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    1120,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "6382ee73-f374-4bae-8f87-08a2d818793f",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    1000,
+    620
+   ]
+  },
+  {
+   "parameters": {
+    "mode": "retrieve-as-tool",
+    "toolName": "buscar_catalogo",
+    "toolDescription": "Busca fichas de producto y FAQ (chunking por unidad semantica: una ficha o entrada completa).",
+    "qdrantCollection": {
+     "__rl": true,
+     "value": "catalogo_producto",
+     "mode": "id"
+    },
+    "topK": 4,
+    "options": {}
+   },
+   "id": "fc6fe465-ee21-45ab-bac1-57479387bada",
+   "name": "Qdrant — catalogo",
+   "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+   "typeVersion": 1,
+   "position": [
+    1240,
+    620
+   ]
+  },
+  {
+   "parameters": {
+    "model": "nomic-embed-text"
+   },
+   "id": "11f5013e-7ebf-4765-8126-da374ba25161",
+   "name": "Embeddings (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+   "typeVersion": 1,
+   "position": [
+    1240,
+    800
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Escalado con contexto completo (cap. 15): 4 elementos.\nconst caso = $('Esquema comun').first().json;\nreturn [{ json: {\n  mensaje_original: caso.texto,\n  cliente: caso.cliente_id,\n  canal: caso.canal,\n  motivo_escalada: $json.motivo ?? 'disparador inmediato',\n  estado_nuevo: 'escalado_humano' } }];"
+   },
+   "id": "75075d69-7e67-453d-a7d1-4257763442c4",
+   "name": "Paquete de contexto para operador",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1120,
+    180
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "INSERT INTO casos (cliente_id, canal, estado, detalle) VALUES ($1, $2, 'escalado_humano', $3)",
+    "options": {
+     "queryReplacement": "={{ [$json.cliente, $json.canal, JSON.stringify($json)] }}"
+    }
+   },
+   "id": "17c7f1c2-a25c-4243-860c-c8729b991b91",
+   "name": "Actualizar caso a escalado",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    1360,
+    180
+   ]
+  },
+  {
+   "parameters": {
+    "resource": "message",
+    "operation": "post",
+    "select": "channel",
+    "channelId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list"
+    },
+    "text": "={{ 'Escalado: ' + $json.cliente + ' (' + $json.canal + ')' }}",
+    "otherOptions": {}
+   },
+   "id": "3cedab6d-bf37-4db2-a17e-13c9ed4fe754",
+   "name": "Notificar al operador (Slack)",
+   "type": "n8n-nodes-base.slack",
+   "typeVersion": 2.2,
+   "position": [
+    1600,
+    180
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "9a8406db-1422-4c03-a799-01391a92ca25",
+   "name": "Responder por el canal de origen",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    1360,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Identidad + estado + escalada (cap. 15)\nLa identidad de negocio (cliente_id) se resuelve ANTES del agente; los disparadores de escalada inmediata se evaluan ANTES de cualquier busqueda; el operador recibe el paquete de contexto completo, no una alerta seca. Esquema en 15_esquema.sql.",
+    "width": 480,
+    "height": 220
+   },
+   "id": "dcefa8b5-8b4c-4898-be83-25383994b393",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent con catalogo",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Embeddings (Ollama)": {
+   "ai_embedding": [
+    [
+     {
+      "node": "Qdrant — catalogo",
+      "type": "ai_embedding",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Qdrant — catalogo": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent con catalogo",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook WhatsApp": {
+   "main": [
+    [
+     {
+      "node": "Normalizar WhatsApp",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Correo nuevo (IMAP)": {
+   "main": [
+    [
+     {
+      "node": "Normalizar correo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalizar WhatsApp": {
+   "main": [
+    [
+     {
+      "node": "Resolver cliente_id",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalizar correo": {
+   "main": [
+    [
+     {
+      "node": "Resolver cliente_id",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Resolver cliente_id": {
+   "main": [
+    [
+     {
+      "node": "Esquema comun",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Esquema comun": {
+   "main": [
+    [
+     {
+      "node": "¿Escalada inmediata?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Escalada inmediata?": {
+   "main": [
+    [
+     {
+      "node": "Paquete de contexto para operador",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "AI Agent con catalogo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Paquete de contexto para operador": {
+   "main": [
+    [
+     {
+      "node": "Actualizar caso a escalado",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Actualizar caso a escalado": {
+   "main": [
+    [
+     {
+      "node": "Notificar al operador (Slack)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Agent con catalogo": {
+   "main": [
+    [
+     {
+      "node": "Responder por el canal de origen",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

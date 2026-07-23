@@ -1,0 +1,201 @@
+{
+ "name": "Libro n8n — Cap 11: idempotencia, reintentos y timeouts",
+ "nodes": [
+  {
+   "parameters": {
+    "path": "pedido",
+    "httpMethod": "POST",
+    "responseMode": "responseNode",
+    "options": {}
+   },
+   "id": "1ca99475-708d-4bf4-97f2-8d603b00d26d",
+   "name": "Webhook de pedido",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "INSERT INTO pedidos (clave_idempotencia, payload) VALUES ($1, $2) ON CONFLICT (clave_idempotencia) DO NOTHING RETURNING id",
+    "options": {
+     "queryReplacement": "={{ [$json.headers['x-idempotency-key'] || $json.body.pedido_id, JSON.stringify($json.body)] }}"
+    }
+   },
+   "id": "1a903d4b-e127-47ca-bf45-92d4a3f04b0b",
+   "name": "Insertar con clave de idempotencia",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    240,
+    300
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 2000,
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.id }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "notEmpty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "c11e924b-6da1-42d4-9f70-b93c387c5da4",
+   "name": "¿Primera vez que llega?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    480,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "url": "https://tu-pasarela/api/cobros",
+    "method": "POST",
+    "options": {
+     "timeout": 8000
+    }
+   },
+   "id": "f222a2f8-4781-4f97-bf85-72c2ad9b7623",
+   "name": "Cobrar (API externa)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    720,
+    200
+   ],
+   "retryOnFail": true,
+   "maxTries": 4,
+   "waitBetweenTries": 5000
+  },
+  {
+   "parameters": {},
+   "id": "eb741ac4-ddc5-4818-97f8-8e1b46480dff",
+   "name": "Duplicado: no cobrar de nuevo",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    720,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "options": {}
+   },
+   "id": "6b8daa39-61d8-4a89-a6cd-41990032d245",
+   "name": "Responder al webhook",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    960,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Ejecutar dos veces no puede cobrar dos veces (cap. 11)\nUNIQUE en PostgreSQL como clave de idempotencia; reintentos con espera en el nodo (no inmediatos); timeout de 8 s en la llamada de cobro. El reintento solo es seguro porque la operacion es idempotente.",
+    "width": 460,
+    "height": 210
+   },
+   "id": "0d51fa06-a36c-4e8a-90c7-94a99f965cf0",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Webhook de pedido": {
+   "main": [
+    [
+     {
+      "node": "Insertar con clave de idempotencia",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Insertar con clave de idempotencia": {
+   "main": [
+    [
+     {
+      "node": "¿Primera vez que llega?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Primera vez que llega?": {
+   "main": [
+    [
+     {
+      "node": "Cobrar (API externa)",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Duplicado: no cobrar de nuevo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Cobrar (API externa)": {
+   "main": [
+    [
+     {
+      "node": "Responder al webhook",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Duplicado: no cobrar de nuevo": {
+   "main": [
+    [
+     {
+      "node": "Responder al webhook",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

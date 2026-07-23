@@ -1,0 +1,133 @@
+{
+ "name": "Libro n8n — Cap 08: RAG consulta con citas",
+ "nodes": [
+  {
+   "parameters": {
+    "options": {}
+   },
+   "id": "bb481071-26ed-482f-af26-8c20a4299478",
+   "name": "Chat de prueba",
+   "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    300
+   ],
+   "webhookId": "721ffa5e-4da0-4901-9f80-5aaa96052246"
+  },
+  {
+   "parameters": {
+    "options": {
+     "systemMessage": "Responde SOLO con lo que devuelva la herramienta buscar_documentacion. Cita el fragmento usado. Si no hay resultados relevantes, dilo en vez de rellenar con conocimiento general."
+    }
+   },
+   "id": "1e6b0573-e59a-4b88-b701-e8be36e62cb7",
+   "name": "AI Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    280,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "88863455-7492-4f18-9ed2-865e1895fa57",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    160,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "mode": "retrieve-as-tool",
+    "toolName": "buscar_documentacion",
+    "toolDescription": "Busca en la base documental propia y devuelve los fragmentos mas relevantes con su origen.",
+    "qdrantCollection": {
+     "__rl": true,
+     "value": "catalogo_libro",
+     "mode": "id"
+    },
+    "topK": 4,
+    "options": {}
+   },
+   "id": "2340e295-57af-4c91-a92d-a27f64a75acc",
+   "name": "Qdrant — buscar",
+   "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+   "typeVersion": 1,
+   "position": [
+    420,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "model": "nomic-embed-text"
+   },
+   "id": "3c65d4b4-47f3-413b-8ab8-417cdba44a0c",
+   "name": "Embeddings (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+   "typeVersion": 1,
+   "position": [
+    420,
+    700
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Embeddings (Ollama)": {
+   "ai_embedding": [
+    [
+     {
+      "node": "Qdrant — buscar",
+      "type": "ai_embedding",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Qdrant — buscar": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Chat de prueba": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

@@ -1,0 +1,61 @@
+{
+ "name": "Libro n8n — Cap 06: herramienta consultar_inventario (sub-workflow)",
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "97a58246-710e-4075-b9ca-9061cc01d136",
+   "name": "Al ser invocado como herramienta",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Inventario de demostracion; en produccion: consulta SQL o API.\nconst stock = { 'camara a7s': 3, 'optica 35mm': 2, 'tripode': 6 };\nconst q = ($input.first().json.query || '').toLowerCase();\nconst unidades = stock[q];\nreturn [{ json: { articulo: q, disponible: unidades ?? 0,\n  encontrado: unidades !== undefined } }];"
+   },
+   "id": "d9e001e0-866f-4d3d-8327-ae9c819b8338",
+   "name": "Consultar inventario (solo lectura)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    260,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## El contrato de la herramienta (cap. 6)\nEste sub-workflow SOLO lee. Una herramienta que escribe seria otro sub-workflow, con otras credenciales y otros limites.",
+    "width": 380,
+    "height": 170
+   },
+   "id": "ad44e7e7-409e-4d95-9885-90b092891d40",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Al ser invocado como herramienta": {
+   "main": [
+    [
+     {
+      "node": "Consultar inventario (solo lectura)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

@@ -1,0 +1,355 @@
+{
+ "name": "Libro n8n — Cap 10: asistente interno con aprobacion",
+ "nodes": [
+  {
+   "parameters": {
+    "format": "simple",
+    "options": {}
+   },
+   "id": "0a83f455-44a4-4f33-b87a-e7fe932f9cbb",
+   "name": "Correo nuevo (IMAP)",
+   "type": "n8n-nodes-base.emailReadImap",
+   "typeVersion": 2,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a1",
+       "name": "remitente",
+       "value": "={{ $json.from }}",
+       "type": "string"
+      },
+      {
+       "id": "a2",
+       "name": "asunto",
+       "value": "={{ $json.subject }}",
+       "type": "string"
+      },
+      {
+       "id": "a3",
+       "name": "cuerpo",
+       "value": "={{ $json.textPlain }}",
+       "type": "string"
+      },
+      {
+       "id": "a4",
+       "name": "message_id",
+       "value": "={{ $json.metadata['message-id'] || $json.messageId }}",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "666dc6ab-8af4-4f47-9a51-1f53b8545025",
+   "name": "Normalizar correo",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    220,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "options": {
+     "systemMessage": "Eres un asistente interno que procesa correos entrantes. Decide UNA accion por correo: responder_con_informacion (usa la base documental), proponer_reunion (consulta disponibilidad primero) o derivar_a_humano. NUNCA ejecutas la accion: produces una PROPUESTA que una persona aprobara. Responde en JSON con accion, borrador y motivo."
+    }
+   },
+   "id": "fdf94622-98d1-410a-9c70-5d8bbc77207e",
+   "name": "AI Agent — decidir accion",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    460,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "a1f33a5f-9b30-4752-8010-a5daf9eede27",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    340,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "name": "consultar_documentacion",
+    "description": "Busca en la base documental interna (politicas, procedimientos). Solo lectura.",
+    "workflowId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list",
+     "cachedResultName": "Selecciona: Cap 08 RAG consulta"
+    }
+   },
+   "id": "804b4c82-117e-43d4-8d64-97c21cd04d46",
+   "name": "consultar_documentacion",
+   "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    540,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "name": "consultar_calendario",
+    "toolDescription": "Consulta disponibilidad del calendario (SOLO lectura) para un rango de fechas. No crea eventos.",
+    "url": "https://tu-servidor-calendario/api/disponibilidad"
+   },
+   "id": "ba535f58-ad4d-40d9-93d8-cb7d4d2029f8",
+   "name": "consultar_calendario",
+   "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+   "typeVersion": 1.1,
+   "position": [
+    740,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "resume": "webhook",
+    "options": {}
+   },
+   "id": "6598083a-6c86-4ef3-bce6-595313a3d0a1",
+   "name": "Esperar aprobacion humana",
+   "type": "n8n-nodes-base.wait",
+   "typeVersion": 1.1,
+   "position": [
+    700,
+    300
+   ],
+   "webhookId": "dfdba58e-6b53-4ede-8a4a-5c54f189b39d"
+  },
+  {
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose"
+        },
+        "conditions": [
+         {
+          "leftValue": "={{ $json.body.decision }}",
+          "rightValue": "aprobar",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "aprobada"
+      },
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose"
+        },
+        "conditions": [
+         {
+          "leftValue": "={{ $json.body.decision }}",
+          "rightValue": "rechazar",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "rechazada"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "c2411e48-05fe-400d-b7cb-97d6064f6e4c",
+   "name": "¿Accion aprobada?",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    940,
+    300
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "cb00e672-f0b4-464f-860c-44016491c2ae",
+   "name": "Ejecutar accion aprobada",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    1180,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "INSERT INTO asistente_registro (message_id, remitente, accion, decision, detalle) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (message_id) DO NOTHING",
+    "options": {
+     "queryReplacement": "={{ [$('Normalizar correo').first().json.message_id, $('Normalizar correo').first().json.remitente, 'propuesta', $json.body?.decision || 'pendiente', JSON.stringify($json)] }}"
+    }
+   },
+   "id": "59919525-c969-479e-bd3e-995478462d98",
+   "name": "Registrar en PostgreSQL",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    1180,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## El punto de aprobacion (cap. 10)\nEl agente decide DESPUES de leer; la persona aprueba ANTES de ejecutar. El nodo Wait pausa el flujo hasta recibir la decision (webhook de reanudacion). ON CONFLICT sobre message_id = idempotencia: el mismo correo no se procesa dos veces.\nSustituye el NoOp final por el envio real (SMTP / calendario).",
+    "width": 480,
+    "height": 240
+   },
+   "id": "f51be9b0-d460-43c7-ad60-db0df7220ec8",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent — decidir accion",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "consultar_documentacion": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent — decidir accion",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "consultar_calendario": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent — decidir accion",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Correo nuevo (IMAP)": {
+   "main": [
+    [
+     {
+      "node": "Normalizar correo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalizar correo": {
+   "main": [
+    [
+     {
+      "node": "AI Agent — decidir accion",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Agent — decidir accion": {
+   "main": [
+    [
+     {
+      "node": "Esperar aprobacion humana",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Esperar aprobacion humana": {
+   "main": [
+    [
+     {
+      "node": "¿Accion aprobada?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Accion aprobada?": {
+   "main": [
+    [
+     {
+      "node": "Ejecutar accion aprobada",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Registrar en PostgreSQL",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ejecutar accion aprobada": {
+   "main": [
+    [
+     {
+      "node": "Registrar en PostgreSQL",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

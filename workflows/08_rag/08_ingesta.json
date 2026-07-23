@@ -1,0 +1,191 @@
+{
+ "name": "Libro n8n — Cap 08: RAG ingesta de documentos",
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "cc09ed16-af67-47d4-8d50-a7a7ce4a08bb",
+   "name": "Ejecutar manualmente",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "fileSelector": "/home/node/docs/*.md",
+    "options": {}
+   },
+   "id": "a455dfc8-2607-4f4f-bde4-694730ca1819",
+   "name": "Leer documentos",
+   "type": "n8n-nodes-base.readWriteFile",
+   "typeVersion": 1,
+   "position": [
+    220,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "text",
+    "options": {}
+   },
+   "id": "386229bd-007b-4da9-94fb-12cec793a5e5",
+   "name": "Extraer texto",
+   "type": "n8n-nodes-base.extractFromFile",
+   "typeVersion": 1,
+   "position": [
+    440,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "mode": "insert",
+    "qdrantCollection": {
+     "__rl": true,
+     "value": "catalogo_libro",
+     "mode": "id"
+    },
+    "options": {}
+   },
+   "id": "315f7aca-7c92-4d47-95c6-ab7804563610",
+   "name": "Qdrant — insertar",
+   "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+   "typeVersion": 1,
+   "position": [
+    680,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "nomic-embed-text"
+   },
+   "id": "c1a9a494-b24c-47b0-a5b2-be2db3dbb8cd",
+   "name": "Embeddings (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+   "typeVersion": 1,
+   "position": [
+    560,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "options": {}
+   },
+   "id": "845139c2-1b77-484c-8be7-cdbc1c6ca6af",
+   "name": "Cargador de documentos",
+   "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+   "typeVersion": 1,
+   "position": [
+    760,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "chunkSize": 800,
+    "chunkOverlap": 80,
+    "options": {}
+   },
+   "id": "89229abc-fc8f-4249-84f0-4c2f3093c7fc",
+   "name": "Fragmentador",
+   "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+   "typeVersion": 1,
+   "position": [
+    760,
+    700
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Ingesta (cap. 8)\nExtraer → fragmentar (800/80) → embeddings → Qdrant. La calidad del RAG se decide aqui, no en la consulta. Ajusta la ruta de documentos y las credenciales de Qdrant y Ollama.",
+    "width": 420,
+    "height": 190
+   },
+   "id": "9b48087e-fadb-4d36-835b-2a933d091bad",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Embeddings (Ollama)": {
+   "ai_embedding": [
+    [
+     {
+      "node": "Qdrant — insertar",
+      "type": "ai_embedding",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Cargador de documentos": {
+   "ai_document": [
+    [
+     {
+      "node": "Qdrant — insertar",
+      "type": "ai_document",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fragmentador": {
+   "ai_textSplitter": [
+    [
+     {
+      "node": "Cargador de documentos",
+      "type": "ai_textSplitter",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Ejecutar manualmente": {
+   "main": [
+    [
+     {
+      "node": "Leer documentos",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Leer documentos": {
+   "main": [
+    [
+     {
+      "node": "Extraer texto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Extraer texto": {
+   "main": [
+    [
+     {
+      "node": "Qdrant — insertar",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

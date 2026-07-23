@@ -1,0 +1,122 @@
+{
+ "name": "Libro n8n — Cap 06: agente con herramienta de sub-workflow",
+ "nodes": [
+  {
+   "parameters": {
+    "options": {}
+   },
+   "id": "3020b5f6-b1bf-4f8a-b101-fd378860efb8",
+   "name": "Chat de prueba",
+   "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    300
+   ],
+   "webhookId": "4aa60aaa-ee0e-44f1-a65d-d226231ef417"
+  },
+  {
+   "parameters": {
+    "options": {
+     "systemMessage": "Eres el asistente de material de un estudio. Antes de responder sobre disponibilidad usa la herramienta consultar_inventario. Si el articulo no aparece, dilo sin inventar existencias."
+    }
+   },
+   "id": "91167e90-7a84-4a40-8916-2135fcf64fe1",
+   "name": "AI Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    280,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "6a397c3e-3da4-4e47-8c59-2fb5e010e454",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    160,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "name": "consultar_inventario",
+    "description": "Devuelve las unidades disponibles de un articulo del inventario. Entrada: query (nombre del articulo en minusculas). Solo lectura: no reserva ni modifica.",
+    "workflowId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list",
+     "cachedResultName": "Selecciona: Cap 06 herramienta consultar_inventario"
+    }
+   },
+   "id": "543d1f6c-d233-4d1c-9e62-9612ac388c9f",
+   "name": "consultar_inventario",
+   "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    420,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Enlaza el sub-workflow\nAbre el nodo consultar_inventario y selecciona en la lista el workflow del capitulo 6 importado junto a este. La descripcion es el contrato que lee el modelo.",
+    "width": 400,
+    "height": 180
+   },
+   "id": "dab5fdb8-6f1a-4a54-8448-e6e582c074ae",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "consultar_inventario": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Chat de prueba": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

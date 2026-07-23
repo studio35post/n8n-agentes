@@ -1,0 +1,71 @@
+{
+ "name": "Libro n8n — Cap 09: servidor MCP (expone la cotizacion)",
+ "nodes": [
+  {
+   "parameters": {
+    "path": "cotizador"
+   },
+   "id": "a93b55cb-93cb-4f20-adf5-cee54e6c6994",
+   "name": "MCP Server Trigger",
+   "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    300
+   ],
+   "webhookId": "7dbdab14-56b1-47eb-a47d-206d63e71dc2"
+  },
+  {
+   "parameters": {
+    "name": "generar_cotizacion",
+    "description": "Genera una cotizacion de produccion audiovisual. Entrada: dias (numero) y tipo (corporativo, ficcion o documental). Devuelve total en euros con desglose. No envia la cotizacion ni compromete agenda.",
+    "workflowId": {
+     "__rl": true,
+     "value": "",
+     "mode": "list",
+     "cachedResultName": "Selecciona: Cap 09 logica de cotizacion"
+    }
+   },
+   "id": "55bfec75-0a8e-4183-9743-6eedfa6b7984",
+   "name": "generar_cotizacion",
+   "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    240,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## El flujo como servidor MCP (cap. 9)\nLa MISMA logica de negocio, expuesta como herramienta descubrible por cualquier agente. Enlaza el sub-workflow de cotizacion en el nodo inferior.",
+    "width": 400,
+    "height": 180
+   },
+   "id": "72b2bccf-06de-4239-9ca5-61f0bf0cc063",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "generar_cotizacion": {
+   "ai_tool": [
+    [
+     {
+      "node": "MCP Server Trigger",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

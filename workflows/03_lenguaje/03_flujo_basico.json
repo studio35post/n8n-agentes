@@ -1,0 +1,243 @@
+{
+ "name": "Libro n8n — Cap 03: el lenguaje de los flujos",
+ "nodes": [
+  {
+   "parameters": {
+    "path": "lenguaje-flujos",
+    "httpMethod": "POST",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "969118bf-e053-470e-8403-a408db775a21",
+   "name": "Webhook de entrada",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose"
+     },
+     "conditions": [
+      {
+       "leftValue": "={{ $json.body.total }}",
+       "rightValue": 100,
+       "operator": {
+        "type": "number",
+        "operation": "gt"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "id": "b0e40d68-c21a-4f2a-adf2-b02aa123d73a",
+   "name": "¿Total mayor que 100?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a1",
+       "name": "prioridad",
+       "value": "alta",
+       "type": "string"
+      },
+      {
+       "id": "a2",
+       "name": "recibido",
+       "value": "={{ $now.toISO() }}",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "b9348403-c429-4c3a-87fb-fedda18f971c",
+   "name": "Marcar prioridad alta",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    480,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a1",
+       "name": "prioridad",
+       "value": "normal",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "1a5c1e53-6f6e-4fc1-9841-bb71c87f92a7",
+   "name": "Marcar prioridad normal",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    480,
+    400
+   ]
+  },
+  {
+   "parameters": {
+    "batchSize": 5,
+    "options": {}
+   },
+   "id": "304aeeb3-34e2-4554-98fd-98e21349d4c5",
+   "name": "Bucle sobre items",
+   "type": "n8n-nodes-base.splitInBatches",
+   "typeVersion": 3,
+   "position": [
+    720,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Expresion de largo alcance: lee un dato del Webhook, varios nodos atras\nconst origen = $('Webhook de entrada').first().json.body;\nreturn $input.all().map(item => ({ json: {\n  ...item.json,\n  resumen: `${item.json.prioridad} — total ${origen.total}`,\n} }));"
+   },
+   "id": "1edf4b0a-f10d-46b7-a28a-cf0b04afccfa",
+   "name": "Procesar item",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    960,
+    300
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "36f09619-3c72-42df-9cfb-7dfe5a3ac6ba",
+   "name": "Fin",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    1200,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## El flujo minimo del capitulo 3\nTrigger → rama (IF) → bucle (Loop Over Items) → transformacion (Code).\n\nPruebalo: POST al webhook con `{\"total\": 150}`.\nEl nodo Code usa una expresion que lee datos del Webhook, no adyacente: memoria de corto alcance dentro de la ejecucion.",
+    "width": 420,
+    "height": 240
+   },
+   "id": "bba2762d-14b7-48fb-a31d-3ab68f5ffa50",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Webhook de entrada": {
+   "main": [
+    [
+     {
+      "node": "¿Total mayor que 100?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "¿Total mayor que 100?": {
+   "main": [
+    [
+     {
+      "node": "Marcar prioridad alta",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Marcar prioridad normal",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Marcar prioridad alta": {
+   "main": [
+    [
+     {
+      "node": "Bucle sobre items",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Marcar prioridad normal": {
+   "main": [
+    [
+     {
+      "node": "Bucle sobre items",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Bucle sobre items": {
+   "main": [
+    [
+     {
+      "node": "Fin",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Procesar item",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Procesar item": {
+   "main": [
+    [
+     {
+      "node": "Bucle sobre items",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

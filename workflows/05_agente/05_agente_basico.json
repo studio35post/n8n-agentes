@@ -1,0 +1,139 @@
+{
+ "name": "Libro n8n — Cap 05: anatomia del AI Agent",
+ "nodes": [
+  {
+   "parameters": {
+    "options": {}
+   },
+   "id": "aa735cb5-6a02-48dd-8be9-0441c248a15e",
+   "name": "Chat de prueba",
+   "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    300
+   ],
+   "webhookId": "440cba00-3599-493e-9b43-c85a687f0644"
+  },
+  {
+   "parameters": {
+    "options": {
+     "systemMessage": "Eres un asistente interno de una productora audiovisual. Respondes en espanol, en tono profesional y breve. Usa las herramientas disponibles cuando aporten datos reales; si no puedes resolver la peticion o el usuario lo pide, deriva a una persona indicando el motivo. Nunca inventes datos de clientes ni de proyectos."
+    }
+   },
+   "id": "c7fd63a8-437f-45d5-8034-0eb030c4d45e",
+   "name": "AI Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    280,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "9277c28c-2492-403b-a706-b616bcbc054f",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    160,
+    520
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "6b9b3040-0d8b-4e1a-9020-1d6cc7d2d9b1",
+   "name": "Memoria de ventana",
+   "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+   "typeVersion": 1.3,
+   "position": [
+    360,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "name": "consultar_clima",
+    "toolDescription": "Consulta el tiempo actual en Madrid. Uso: cuando el usuario pregunte por el clima para un rodaje. NO sirve para pronosticos de otros dias.",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=40.42&longitude=-3.70&current_weather=true"
+   },
+   "id": "8f159a4a-b589-4874-9511-5afcc9fdce4a",
+   "name": "consultar_clima",
+   "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+   "typeVersion": 1.1,
+   "position": [
+    560,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Los cuatro conectores del AI Agent (cap. 5)\nModelo, prompt de sistema, herramientas y memoria como piezas separadas: cambiar el modelo no toca las herramientas.\nRequiere la credencial de Ollama (Anexo A).",
+    "width": 420,
+    "height": 200
+   },
+   "id": "751ee50f-ff89-4ddc-b610-0b8acae5a847",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Memoria de ventana": {
+   "ai_memory": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_memory",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "consultar_clima": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Chat de prueba": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

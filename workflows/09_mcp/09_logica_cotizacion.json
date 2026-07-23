@@ -1,0 +1,46 @@
+{
+ "name": "Libro n8n — Cap 09: logica de cotizacion (sub-workflow)",
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "1c31879d-6072-4064-a47e-51a56621ee29",
+   "name": "Al ser invocado como herramienta",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Cotizador simple: dias de rodaje x tarifa segun tipo de proyecto.\nconst { dias = 1, tipo = 'corporativo' } = $input.first().json;\nconst tarifas = { corporativo: 1200, ficcion: 2400, documental: 1600 };\nconst dia = tarifas[tipo] ?? tarifas.corporativo;\nreturn [{ json: { tipo, dias, total_eur: dia * dias,\n  desglose: `${dias} dias x ${dia} EUR` } }];"
+   },
+   "id": "a2582749-1d8c-419b-9e39-2465848331ec",
+   "name": "Calcular cotizacion",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    260,
+    300
+   ]
+  }
+ ],
+ "connections": {
+  "Al ser invocado como herramienta": {
+   "main": [
+    [
+     {
+      "node": "Calcular cotizacion",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

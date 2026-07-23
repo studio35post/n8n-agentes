@@ -1,0 +1,99 @@
+{
+ "name": "Libro n8n — Cap 03: Error Workflow",
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "e0efbeea-405b-4d1a-912f-10255ef4ad6c",
+   "name": "Disparador de error",
+   "type": "n8n-nodes-base.errorTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a1",
+       "name": "flujo",
+       "value": "={{ $json.workflow.name }}",
+       "type": "string"
+      },
+      {
+       "id": "a2",
+       "name": "error",
+       "value": "={{ $json.execution.error.message }}",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "8b41f3ce-1cad-490d-9e7a-af4e85cfe383",
+   "name": "Preparar aviso",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "922b6524-c008-49bb-8b12-5b505de413ee",
+   "name": "Conecta aqui tu canal de aviso",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    480,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Flujo de error (cap. 3)\nAsocialo desde Settings → Error Workflow en cualquier flujo. Cuando una ejecucion falle sin captura, este flujo recibe el contexto del fallo.\nSustituye el ultimo nodo por correo, Telegram o Slack.",
+    "width": 420,
+    "height": 200
+   },
+   "id": "98a539cf-7c0b-4309-82a5-3ae3f9d78597",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Disparador de error": {
+   "main": [
+    [
+     {
+      "node": "Preparar aviso",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Preparar aviso": {
+   "main": [
+    [
+     {
+      "node": "Conecta aqui tu canal de aviso",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

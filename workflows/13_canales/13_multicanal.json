@@ -1,0 +1,295 @@
+{
+ "name": "Libro n8n — Cap 13: un agente detras de varias puertas",
+ "nodes": [
+  {
+   "parameters": {
+    "updates": [
+     "message"
+    ],
+    "additionalFields": {}
+   },
+   "id": "d75f067b-8b4d-460e-b2f7-ccbfde86d969",
+   "name": "Telegram Trigger",
+   "type": "n8n-nodes-base.telegramTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    200
+   ],
+   "webhookId": "f2bdf6f8-663f-4f1e-9b10-195e112a1110"
+  },
+  {
+   "parameters": {
+    "path": "whatsapp-entrante",
+    "httpMethod": "POST",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "8cd2aff9-47dd-4364-a078-cab187725049",
+   "name": "Webhook WhatsApp Cloud",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const m = $input.first().json.message;\nreturn [{ json: { canal: 'telegram',\n  id_plataforma: String(m.chat.id),\n  session_id: `tg-${m.chat.id}`,\n  texto: m.text ?? '', timestamp: m.date } }];"
+   },
+   "id": "9cfdc055-e9c6-4354-ace6-629bcdd4693a",
+   "name": "Normalizar Telegram",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    240,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// Cloud API: entry[].changes[].value.messages[]\nconst v = $input.first().json.body.entry?.[0]?.changes?.[0]?.value;\nconst msg = v?.messages?.[0];\nif (!msg) return [];\nreturn [{ json: { canal: 'whatsapp',\n  id_plataforma: msg.from,\n  session_id: `wa-${msg.from}`,\n  texto: msg.text?.body ?? '',\n  timestamp: msg.timestamp } }];"
+   },
+   "id": "2c904235-b8e0-41d3-bfb4-4c727b792c1e",
+   "name": "Normalizar WhatsApp",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    240,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "promptType": "define",
+    "text": "={{ $json.texto }}",
+    "options": {
+     "systemMessage": "Atiendes consultas de clientes. El canal de origen no cambia tu criterio: misma logica, distinta puerta. Se breve; en WhatsApp y Telegram nadie lee parrafos largos."
+    }
+   },
+   "id": "658074d8-e581-4485-aa09-fcba6f19c844",
+   "name": "AI Agent (logica unica)",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    500,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "fd8f2c18-f2e3-4d65-a114-e8dd2f2abfed",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    400,
+    520
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "0bbb2a4a-fd86-466c-8a0e-46d79cc09c3b",
+   "name": "Memoria por session_id",
+   "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+   "typeVersion": 1.3,
+   "position": [
+    620,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "rules": {
+     "values": [
+      {
+       "conditions": {
+        "options": {
+         "caseSensitive": true,
+         "leftValue": "",
+         "typeValidation": "loose"
+        },
+        "conditions": [
+         {
+          "leftValue": "={{ $('Normalizar Telegram').first()?.json.canal || $('Normalizar WhatsApp').first()?.json.canal }}",
+          "rightValue": "telegram",
+          "operator": {
+           "type": "string",
+           "operation": "equals"
+          }
+         }
+        ],
+        "combinator": "and"
+       },
+       "renameOutput": true,
+       "outputKey": "telegram"
+      }
+     ]
+    },
+    "options": {
+     "fallbackOutput": "extra"
+    }
+   },
+   "id": "06ad6b5a-1c8b-4be3-b900-dceaa786711b",
+   "name": "Salida por canal",
+   "type": "n8n-nodes-base.switch",
+   "typeVersion": 3.2,
+   "position": [
+    760,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "chatId": "={{ $('Normalizar Telegram').first().json.id_plataforma }}",
+    "text": "={{ $json.output }}",
+    "additionalFields": {}
+   },
+   "id": "9d5504d1-53da-4cc2-8358-ae07f0aea858",
+   "name": "Enviar por Telegram",
+   "type": "n8n-nodes-base.telegram",
+   "typeVersion": 1.2,
+   "position": [
+    1000,
+    200
+   ]
+  },
+  {
+   "parameters": {
+    "url": "https://graph.facebook.com/v20.0/TU_PHONE_ID/messages",
+    "method": "POST",
+    "options": {
+     "timeout": 10000
+    }
+   },
+   "id": "0667e541-cd90-4351-9f9f-238a321ff807",
+   "name": "Enviar por WhatsApp (Cloud API)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1000,
+    420
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Identidad tecnica vs identidad de negocio (cap. 13)\nCada canal entrega su id de plataforma; la normalizacion temprana lo convierte en un session_id propio ANTES del agente. La logica del agente es una sola; la salida vuelve por el canal de origen.",
+    "width": 460,
+    "height": 200
+   },
+   "id": "e44f6b8a-a45d-4c7e-bb85-fcf9c13a9566",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent (logica unica)",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Memoria por session_id": {
+   "ai_memory": [
+    [
+     {
+      "node": "AI Agent (logica unica)",
+      "type": "ai_memory",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Telegram Trigger": {
+   "main": [
+    [
+     {
+      "node": "Normalizar Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Webhook WhatsApp Cloud": {
+   "main": [
+    [
+     {
+      "node": "Normalizar WhatsApp",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalizar Telegram": {
+   "main": [
+    [
+     {
+      "node": "AI Agent (logica unica)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Normalizar WhatsApp": {
+   "main": [
+    [
+     {
+      "node": "AI Agent (logica unica)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "AI Agent (logica unica)": {
+   "main": [
+    [
+     {
+      "node": "Salida por canal",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Salida por canal": {
+   "main": [
+    [
+     {
+      "node": "Enviar por Telegram",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Enviar por WhatsApp (Cloud API)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

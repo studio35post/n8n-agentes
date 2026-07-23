@@ -1,0 +1,128 @@
+{
+ "name": "Libro n8n — Cap 04: primera API sin credenciales",
+ "nodes": [
+  {
+   "parameters": {},
+   "id": "ff3e0be1-4ae3-4f71-9967-14ed9732fbd3",
+   "name": "Ejecutar manualmente",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=40.42&longitude=-3.70&current_weather=true",
+    "options": {
+     "timeout": 10000
+    }
+   },
+   "id": "10653100-0c24-4380-8cf1-8574740b539c",
+   "name": "HTTP Request — Open-Meteo",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "a1",
+       "name": "temperatura_c",
+       "value": "={{ $json.current_weather.temperature }}",
+       "type": "number"
+      },
+      {
+       "id": "a2",
+       "name": "viento_kmh",
+       "value": "={{ $json.current_weather.windspeed }}",
+       "type": "number"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "e257caba-0b7f-41e1-a2cf-83596c21f3f9",
+   "name": "Renombrar con expresiones",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    480,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "// El cuerpo JSON de la API ya llego convertido en items de n8n\nconst d = $input.first().json;\nreturn [{ json: { informe: `Madrid: ${d.temperatura_c} C, viento ${d.viento_kmh} km/h` } }];"
+   },
+   "id": "aa2c90d0-76e6-4498-ad19-54494851ce4d",
+   "name": "Transformacion final",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    720,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "content": "## Que es una API (cap. 4)\nLa misma URL del nodo HTTP Request funciona pegada en el navegador: una API REST es un contrato sobre HTTP. Open-Meteo no pide credenciales, por eso es el primer ejemplo del libro.\nEjecutalo tal cual: no necesita configurar nada.",
+    "width": 420,
+    "height": 220
+   },
+   "id": "dcb71dcd-05ad-4215-a283-0cb1244d4e2d",
+   "name": "Nota",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "Ejecutar manualmente": {
+   "main": [
+    [
+     {
+      "node": "HTTP Request — Open-Meteo",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "HTTP Request — Open-Meteo": {
+   "main": [
+    [
+     {
+      "node": "Renombrar con expresiones",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Renombrar con expresiones": {
+   "main": [
+    [
+     {
+      "node": "Transformacion final",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

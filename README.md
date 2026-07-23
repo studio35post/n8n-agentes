@@ -35,8 +35,7 @@ workflow.
 | 15. Proyecto: atención a clientes | `workflows/15_atencion/` |
 | 19. Proyecto: el proceso completo | `workflows/19_proceso/` |
 
-Los workflows se publican junto con el libro; cada uno se exporta de una
-instancia real de n8n y se prueba antes de subirlo.
+**Estado de pruebas.** Los 19 workflows se importaron en una instancia real de n8n 2.19.5 (19/19 importados sin errores, todos los tipos de nodo verificados contra la instalacion) y el flujo del capitulo 4 se ejecuto de principio a fin contra la API real. Los que usan credenciales (Ollama, PostgreSQL, Qdrant, IMAP...) requieren configurarlas tras importar: cada carpeta indica cuales.
 
 ## Licencia
 

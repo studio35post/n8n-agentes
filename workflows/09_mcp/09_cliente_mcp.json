@@ -1,0 +1,100 @@
+{
+ "name": "Libro n8n — Cap 09: agente cliente MCP",
+ "nodes": [
+  {
+   "parameters": {
+    "options": {}
+   },
+   "id": "14269424-1105-49cb-b2d1-62919b9209c3",
+   "name": "Chat de prueba",
+   "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    300
+   ],
+   "webhookId": "9a9d1c54-6bc8-4148-8614-0e4d8d480af4"
+  },
+  {
+   "parameters": {
+    "options": {
+     "systemMessage": "Puedes cotizar producciones usando las herramientas MCP disponibles. Pide siempre los datos que falten (dias, tipo) antes de cotizar."
+    }
+   },
+   "id": "c1e6886a-ebdf-4451-9892-4577d496f604",
+   "name": "AI Agent",
+   "type": "@n8n/n8n-nodes-langchain.agent",
+   "typeVersion": 1.7,
+   "position": [
+    280,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "model": "llama3.1:8b",
+    "options": {}
+   },
+   "id": "f4f2bb85-9352-473b-9070-2944f1ddc585",
+   "name": "Modelo local (Ollama)",
+   "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+   "typeVersion": 1,
+   "position": [
+    160,
+    520
+   ]
+  },
+  {
+   "parameters": {
+    "sseEndpoint": "http://localhost:5678/mcp/cotizador/sse"
+   },
+   "id": "4b28149d-7ced-4fce-a1c3-e999d7386877",
+   "name": "Cliente MCP",
+   "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+   "typeVersion": 1,
+   "position": [
+    420,
+    520
+   ]
+  }
+ ],
+ "connections": {
+  "Modelo local (Ollama)": {
+   "ai_languageModel": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_languageModel",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Cliente MCP": {
+   "ai_tool": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "ai_tool",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Chat de prueba": {
+   "main": [
+    [
+     {
+      "node": "AI Agent",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}

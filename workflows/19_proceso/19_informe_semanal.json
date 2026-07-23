@@ -1,0 +1,107 @@
+{
+ "name": "Libro n8n — Cap 19: informe semanal",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "weeks",
+       "weeksInterval": 1,
+       "triggerAtDay": [
+        1
+       ],
+       "triggerAtHour": 8
+      }
+     ]
+    }
+   },
+   "id": "b01e1bfa-121d-42f8-832c-f1794c9163e8",
+   "name": "Cada lunes a las 8",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT categoria, count(*) AS total, round(avg(confianza)::numeric, 2) AS confianza_media FROM leads WHERE creado_en > now() - interval '7 days' GROUP BY categoria ORDER BY total DESC",
+    "options": {}
+   },
+   "id": "d112399d-72bf-4fdf-93a0-cb881e83ed04",
+   "name": "Agregados de la semana",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    240,
+    300
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const filas = $input.all().map(i => i.json);\nconst total = filas.reduce((s, f) => s + Number(f.total), 0);\nconst lineas = filas.map(f =>\n  `- ${f.categoria}: ${f.total} leads (confianza media ${f.confianza_media})`).join('\\n');\nreturn [{ json: { informe:\n  `Leads de la semana: ${total}\\n${lineas}` } }];"
+   },
+   "id": "ea9afc4e-237e-411b-b6d2-854b3ec072b5",
+   "name": "Redactar informe",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    480,
+    300
+   ]
+  },
+  {
+   "parameters": {},
+   "id": "eacdabc9-e64e-46a1-8370-8dbc18ac6e50",
+   "name": "Conecta aqui correo o Slack",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    720,
+    300
+   ]
+  }
+ ],
+ "connections": {
+  "Cada lunes a las 8": {
+   "main": [
+    [
+     {
+      "node": "Agregados de la semana",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Agregados de la semana": {
+   "main": [
+    [
+     {
+      "node": "Redactar informe",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Redactar informe": {
+   "main": [
+    [
+     {
+      "node": "Conecta aqui correo o Slack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1"
+ },
+ "active": false
+}
