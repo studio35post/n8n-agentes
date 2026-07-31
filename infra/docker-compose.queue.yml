@@ -1,0 +1,36 @@
+# Modo queue del capitulo 16: anade Redis y un worker al compose base.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.queue.yml up -d
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  n8n:
+    environment:
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+    depends_on:
+      - redis
+
+  n8n-worker:
+    image: docker.n8n.io/n8nio/n8n
+    restart: unless-stopped
+    command: worker
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+      TZ: ${GENERIC_TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - redis
